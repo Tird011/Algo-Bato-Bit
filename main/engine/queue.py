@@ -53,16 +53,6 @@ class QueueEvent:
 
 @dataclass
 class Enemy:
-    """
-    Pure data. No pygame surfaces, no draw calls.
-    The scene layer reads .x, .y, .complexity, .state and renders accordingly.
-
-    States
-    ------
-    "walk"    : enemy is moving toward the player (default)
-    "dying"   : enemy was hit — scene layer plays death animation then removes
-    "waiting" : enemy reached FRONT_TARGET_X and is holding position
-    """
     complexity: str
     x:          float
     y:          float
