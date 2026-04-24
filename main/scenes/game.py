@@ -18,7 +18,6 @@ import pygame
 import sys
 import os
 
-# ── Engine imports ────────────────────────────────────────────────────────────
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "engine"))
 from complexity_engine import ComplexityEngine, COMPLEXITY_MAP
 from queue             import EnemyQueue, QueueConfig
@@ -27,7 +26,6 @@ from execution_bar     import ExecutionBar, BarConfig
 from hud               import HUD
 
 
-# ─── CONSTANTS ────────────────────────────────────────────────────────────────
 
 SCREEN_W, SCREEN_H = 960, 540
 FPS                = 60
@@ -38,7 +36,6 @@ SPRITES_DIR        = os.path.join(ASSETS_DIR, "sprites")
 AUDIO_DIR          = os.path.join(ASSETS_DIR, "audio")
 FONTS_DIR          = os.path.join(ASSETS_DIR, "fonts")
 
-# ── Palette ───────────────────────────────────────────────────────────────────
 # Yellowpad notebook aesthetic
 C_BG        = (232, 220, 180)   # warm yellow paper
 C_LINE      = (180, 190, 210)   # faint ruled lines (blue)
@@ -57,7 +54,6 @@ C_HIT_GOOD  = ( 60, 220, 100)
 C_HIT_BAD   = (220,  60,  60)
 C_WHITE     = (255, 255, 255)
 
-# ── Layout ────────────────────────────────────────────────────────────────────
 BAR_Y        = SCREEN_H - 100
 BAR_H        = 52
 BAR_X        = 60
@@ -69,7 +65,6 @@ COMBO_X      = 20
 COMBO_Y      = 160
 
 
-# ─── ASSET LOADER ─────────────────────────────────────────────────────────────
 
 def load_sprite(path: str, size: tuple) -> pygame.Surface:
     """Load a sprite or return a colored placeholder if missing."""
@@ -92,7 +87,6 @@ def load_font(name: str, size: int) -> pygame.font.Font:
     return pygame.font.SysFont("Courier", size, bold=True)
 
 
-# ─── GAME ─────────────────────────────────────────────────────────────────────
 
 class Game:
     def __init__(self, screen: pygame.Surface):
@@ -100,7 +94,6 @@ class Game:
         self.clock   = pygame.time.Clock()
         self.running = True
 
-        # ── Engine ────────────────────────────────────────────────────────────
         self.engine = ComplexityEngine()
         self.queue  = EnemyQueue(
             self.engine,
@@ -110,12 +103,10 @@ class Game:
         self.bar    = ExecutionBar(BarConfig(x=BAR_X, width=BAR_W))
         self.hud    = HUD(max_memory=self.player.cfg.max_health)
 
-        # ── Fonts ─────────────────────────────────────────────────────────────
         self.font_lg  = load_font("font_main.ttf", 28)
         self.font_md  = load_font("font_main.ttf", 18)
         self.font_sm  = load_font("font_main.ttf", 13)
 
-        # ── Player sprites ────────────────────────────────────────────────────
         sprite_path = lambda name: os.path.join(SPRITES_DIR, "player", name)
         self.player_sprites = {
             "idle":   load_sprite(sprite_path("idle.png"),   (80, 80)),
@@ -124,12 +115,10 @@ class Game:
             "dead":   load_sprite(sprite_path("hurt.png"),   (80, 80)),
         }
 
-        # ── UI sprites ────────────────────────────────────────────────────────
         ui_path = lambda name: os.path.join(SPRITES_DIR, "ui", name)
         self.marker_sprite      = load_sprite(ui_path("marker.png"),      (12, BAR_H + 8))
         self.combo_block_sprite = load_sprite(ui_path("combo_block.png"), (18, 12))
 
-        # ── Background ────────────────────────────────────────────────────────
         bg_path = os.path.join(ASSETS_DIR, "YellowPad.jpg")
         if os.path.exists(bg_path):
             raw = pygame.image.load(bg_path).convert()
@@ -137,10 +126,8 @@ class Game:
         else:
             self.bg = None
 
-        # ── Difficulty scaling timer ───────────────────────────────────────────
         self._diff_timer = 0.0
 
-    # ── Main loop ─────────────────────────────────────────────────────────────
 
     def run(self):
         while self.running:
@@ -149,7 +136,6 @@ class Game:
             self._update(dt_ms)
             self._draw()
 
-    # ── Events ────────────────────────────────────────────────────────────────
 
     def _handle_events(self):
         for event in pygame.event.get():
@@ -189,7 +175,6 @@ class Game:
                     self.bar.on_miss()
                     self.hud.set_feedback(e.hit_result.feedback, 900)
 
-    # ── Update ────────────────────────────────────────────────────────────────
 
     def _update(self, dt_ms: float):
         if self.player.is_dead:
@@ -237,7 +222,6 @@ class Game:
         self.hud.reset()
         self._diff_timer = 0.0
 
-    # ── Draw ──────────────────────────────────────────────────────────────────
 
     def _draw(self):
         # Background
@@ -265,7 +249,6 @@ class Game:
     def _draw_margin_line(self):
         pygame.draw.line(self.screen, C_MARGIN, (55, 0), (55, SCREEN_H), 2)
 
-    # ── Enemy rendering (shapes only — no sprites, intentional) ───────────────
 
     def _draw_enemies(self):
         for enemy in self.queue.all_enemies:
@@ -299,7 +282,6 @@ class Game:
             pygame.draw.rect(self.screen, C_WHITE,
                              body_rect.inflate(10, 10), 1)
 
-    # ── Player rendering ──────────────────────────────────────────────────────
 
     def _draw_player(self):
         state  = self.player.state if self.player.state in self.player_sprites else "idle"
@@ -308,7 +290,6 @@ class Game:
         py     = int(self.player.y + self.player.wobble)
         self.screen.blit(sprite, (px, py))
 
-    # ── Execution bar rendering ───────────────────────────────────────────────
 
     def _draw_bar(self):
         bar_rect = pygame.Rect(BAR_X, BAR_Y, BAR_W, BAR_H)
@@ -353,7 +334,6 @@ class Game:
         self.screen.blit(self.marker_sprite,
                          (mx, BAR_Y - 4))
 
-    # ── HUD rendering ─────────────────────────────────────────────────────────
 
     def _draw_hud(self):
         # Score
@@ -393,7 +373,6 @@ class Game:
             f"ACC {self.hud.accuracy:.0%}", True, C_INK_FAINT)
         self.screen.blit(acc_surf, (BAR_X, 16))
 
-    # ── Combo stack rendering (visual DSA) ────────────────────────────────────
 
     def _draw_combo_stack(self):
         """
