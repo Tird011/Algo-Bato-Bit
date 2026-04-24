@@ -18,7 +18,7 @@ from dataclasses import dataclass
 class BarConfig:
     x:             float = 60.0    # left edge of bar in screen px
     width:         float = 840.0   # total bar width
-    speed_base:    float = 3.0     # marker px/frame at 60fps
+    speed_base:    float = 4.0     # marker px/frame at 60fps
     speed_max:     float = 6.5     # cap so it never becomes unplayable
     speed_step:    float = 0.15    # speed added per streak hit
     flash_ms:      float = 220.0   # how long a zone flash lasts
