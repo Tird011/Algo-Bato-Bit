@@ -12,7 +12,7 @@ from typing import Optional
 import random
 
 
-#  COMPLEXITY MAP (hashmap)
+# COMPLEXITY MAP (ang hashbrown) 
 # counters   : list of enemy types this move can defeat
 # zones      : which hit zones (0=left, 1=center, 2=right) trigger this move
 # weight     : spawn probability weight (higher = appears more often)
@@ -23,18 +23,20 @@ import random
 
 COMPLEXITY_MAP: dict[str, dict] = {
     "O(1)": {
-        "counters":  ["O(n²)"],
-        "zones":     [0],                  # J key only  fast and precise
+        # Beaten by O(log n) pressing zone 1
+        "counters":  ["O(log n)"],
+        "zones":     [0],                  # J key
         "weight":    35,
-        "speed_mod": 1.5,                  # fastest enemy, punishes slow reactions
+        "speed_mod": 1.5,
         "tolerance": 0.72,
         "points":    100,
         "is_boss":   False,
         "desc":      "Constant time. Blink and it's gone.",
     },
     "O(log n)": {
-        "counters":  ["O(n)", "O(n²)"],    # flexible beats two types
-        "zones":     [1],                  # K key center zone
+        # Beaten by O(n) pressing zone 2
+        "counters":  ["O(n)"],
+        "zones":     [1],                  # K key
         "weight":    30,
         "speed_mod": 1.2,
         "tolerance": 0.72,
@@ -43,24 +45,26 @@ COMPLEXITY_MAP: dict[str, dict] = {
         "desc":      "Logarithmic. Cuts the problem in half every step.",
     },
     "O(n)": {
-        "counters":  ["O(n²)"],
-        "zones":     [2],                  # L key right zone
+        # Beaten by O(1) pressing zone 0
+        "counters":  ["O(1)"],
+        "zones":     [2],                  # L key
         "weight":    25,
-        "speed_mod": 1.0,                  # baseline speed
+        "speed_mod": 1.0,
         "tolerance": 0.72,
         "points":    200,
         "is_boss":   False,
         "desc":      "Linear. Steady, predictable, manageable.",
     },
     "O(n²)": {
-        "counters":  [],                   # counters nothing pure enemy
-        "zones":     [2],                  # must hit right zone to counter it
+        # Boss — beaten by ANY zone but requires tight timing window
+        "counters":  ["O(1)", "O(log n)", "O(n)"],
+        "zones":     [2],                  # hint zone for HUD (L key preferred)
         "weight":    10,
-        "speed_mod": 0.7,                  # slow but requires tightest timing
-        "tolerance": 0.45,                 # boss-level strict hit window
+        "speed_mod": 0.7,
+        "tolerance": 0.45,                 # tight boss window
         "points":    400,
         "is_boss":   True,
-        "desc":      "Quadratic. Slow but punishing. Respect it.",
+        "desc":      "Quadratic. Slow but punishing. Any key beats it — if your timing is perfect.",
     },
 }
 
@@ -69,7 +73,7 @@ ENEMY_TYPES:    list[str] = list(COMPLEXITY_MAP.keys())
 SPAWN_WEIGHTS:  list[int] = [COMPLEXITY_MAP[e]["weight"] for e in ENEMY_TYPES]
 
 
-# HIT RESULT
+# ─── HIT RESULT ───────────────────────────────────────────────────────────────
 
 @dataclass
 class HitResult:
@@ -80,7 +84,7 @@ class HitResult:
     success:        bool            # True = enemy defeated
     points:         int             # points awarded (0 on miss)
     streak_bonus:   int             # extra points from streak multiplier
-    feedback:       str             # display string "TAMA!", "MALI!"
+    feedback:       str             # display string e.g. "TAMA!", "MALI!"
     enemy_type:     str             # which enemy was targeted
     pressed_zone:   int             # which zone the player pressed
     correct_zone:   int             # which zone was actually needed
@@ -117,21 +121,17 @@ class ComplexityEngine:
                        (checked externally by ExecutionBar)
         """
         data         = COMPLEXITY_MAP[enemy_type]
-        correct_zone = data["zones"][0]      # primary required zone
-        counters     = data["counters"]
+        correct_zone = data["zones"][0]      # primary zone hint for HUD
+        beaten_by    = data["counters"]      # which types beat this enemy
 
-        # Zone 0 = O(1), Zone 1 = O(log n), Zone 2 = O(n)
-        zone_to_move = {0: "O(1)", 1: "O(log n)", 2: "O(n)"}
-        player_move  = zone_to_move.get(pressed_zone, "")
+        # Build winning zones from beaten_by.
+        # e.g. O(log n) beaten_by ["O(n)","O(n2)"] -> zones {2}
+        # O(n2) beaten_by ["O(1)","O(log n)","O(n)"] -> zones {0,1,2}
+        winning_zones = {COMPLEXITY_MAP[b]["zones"][0] for b in beaten_by}
 
-        # Win condition
-        # Player wins if:
-        #   1. Their move is in the enemy's counters list (RPS logic)
-        #   2. They pressed the correct zone for that move
-        #   3. The timing marker was inside the hit window
-        zone_correct  = (pressed_zone == correct_zone)
-        move_counters = (player_move in counters) if counters else False
-        success       = zone_correct and move_counters and marker_ok
+        # Win if pressed zone is in winning_zones AND timing was good
+        zone_correct = (pressed_zone in winning_zones)
+        success      = zone_correct and marker_ok
 
         if success:
             self.streak += 1
@@ -151,7 +151,7 @@ class ComplexityEngine:
                 is_boss_kill   = data["is_boss"],
             )
 
-        # Loss condition 
+        # ── Loss condition ─────────────────────────────────────────────────────
         else:
             self.streak = 0
             feedback    = self._loss_feedback(
@@ -174,11 +174,11 @@ class ComplexityEngine:
         """Call this on auto-miss (enemy walks past player)."""
         self.streak = 0
 
-    # Feedback strings 
+    # ── Feedback strings ──────────────────────────────────────────────────────
 
     def _win_feedback(self, streak: int, is_boss: bool) -> str:
         if is_boss:
-            return "BOSS KILL! YAWA!"
+            return "BOSS KILL! LODI!"
         if streak >= 10:
             return f"GALING! x{streak} STREAK!"
         if streak >= 5:
@@ -199,11 +199,14 @@ class ComplexityEngine:
         return "MALI!"
 
 
-# ENEMY DATA 
+# ─── ENEMY DATA ───────────────────────────────────────────────────────────────
 
 @dataclass
 class Enemy:
-    
+    """
+    Pure data object. No rendering logic here.
+    The game layer reads x, y, complexity and draws whatever it wants.
+    """
     complexity:  str
     x:           float
     y:           float
@@ -239,7 +242,7 @@ class Enemy:
         return math.sin(self._wobble_t) * 3.0
 
 
-# ENEMY QUEUE(DSA Logic queue natin) 
+# ─── ENEMY QUEUE ──────────────────────────────────────────────────────────────
 
 class EnemyQueue:
     """
@@ -256,7 +259,7 @@ class EnemyQueue:
     SPAWN_VARIANCE:    float = 0.3      # ±30% random variance
     QUEUE_SPACING:     float = 110.0    # px between enemies
     FRONT_TARGET_X:    float = 120.0    # x position where front enemy stops
-    AUTO_MISS_X:       float = 40.0     # x position that triggers auto miss
+    AUTO_MISS_X:       float = 40.0     # x position that triggers auto-miss
     ENTRY_X:           float = 1000.0   # enemies spawn from the right
 
     def __init__(self, engine: ComplexityEngine):
@@ -267,7 +270,7 @@ class EnemyQueue:
         self.memory_leak:  int              = 0    # accumulated damage this session
         self.auto_misses:  int              = 0    # enemies that walked past
 
-    # Spawning
+    # ── Spawning ──────────────────────────────────────────────────────────────
 
     def _spawn(self):
         complexity = random.choices(ENEMY_TYPES, weights=SPAWN_WEIGHTS, k=1)[0]
@@ -283,7 +286,7 @@ class EnemyQueue:
         high = self.SPAWN_INTERVAL_MS * (1 + variance)
         return random.uniform(low, high)
 
-    # Update
+    # ── Update ────────────────────────────────────────────────────────────────
 
     def update(self, dt_ms: float) -> Optional[str]:
         """
@@ -315,7 +318,7 @@ class EnemyQueue:
                 if self.queue[i].x < min_x:
                     self.queue[i].x = min_x
 
-        # Auto-miss check front enemy walked past the hit line
+        # Auto-miss check — front enemy walked past the hit line
         if self.queue and self.queue[0].x < self.AUTO_MISS_X:
             self.queue.pop(0)
             self.auto_misses += 1
@@ -324,7 +327,7 @@ class EnemyQueue:
 
         return None
 
-    # Player action
+    # ── Player action ─────────────────────────────────────────────────────────
 
     def handle_input(self, pressed_zone: int, marker_ok: bool) -> Optional[HitResult]:
         """
@@ -343,7 +346,7 @@ class EnemyQueue:
 
         return result
 
-    # Accessors 
+    # ── Accessors ─────────────────────────────────────────────────────────────
 
     @property
     def front(self) -> Optional[Enemy]:
@@ -360,7 +363,7 @@ class EnemyQueue:
         self.memory_leak  = 0
 
 
-# Testing
+# ─── QUICK TEST (run this file directly to verify logic) ──────────────────────
 
 if __name__ == "__main__":
     print("=== ALGO BATO BIT — Complexity Engine Test ===\n")
