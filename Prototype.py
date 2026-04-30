@@ -379,7 +379,7 @@ class Game:
         marker_ok    = self.bar.marker_in_zone(pressed_zone)
 
         if pressed_zone == correct_zone and marker_ok:
-            # ✅ Perfect hit
+            #  Perfect hit
             self.streak += 1
             points = 100 * self.streak
             self.score += points
